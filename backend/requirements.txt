@@ -143,6 +143,7 @@ pyarrow
 pyasn1
 pyasn1_modules
 pycparser
+pycryptodome
 pydantic
 pydantic-settings
 pydantic_core

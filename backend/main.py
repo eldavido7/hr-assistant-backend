@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, Blueprint, Response
+from flask import Flask, request, jsonify, Blueprint
 from flask_cors import CORS
 from flask_compress import Compress
 from flask_limiter import Limiter
