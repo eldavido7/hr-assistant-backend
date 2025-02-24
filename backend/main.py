@@ -1,5 +1,8 @@
-from flask import Flask, request, jsonify, Blueprint
+from flask import Flask, request, jsonify, Blueprint, Response
 from flask_cors import CORS
+from flask_compress import Compress
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from services.ai_service import (
     query_deepseek,
     analyze_feedback,
@@ -23,10 +26,26 @@ from services.document_service import (
     list_hr_documents,
 )
 
+
 app = Flask(__name__)
 CORS(app)
+Compress(app)  # Enable response compression
 
 document_bp = Blueprint("document", __name__)
+
+# Apply rate limiting (200 requests per minute per IP)
+limiter = Limiter(get_remote_address, app=app, default_limits=["20 per minute"])
+
+
+@app.after_request
+def add_security_headers(response):
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = (
+        "max-age=31536000; includeSubDomains"
+    )
+    return response
 
 
 @app.route("/", methods=["GET"])
@@ -226,26 +245,6 @@ def screen_resumes_api():
     result = screen_resumes(job_description, resumes)
 
     return jsonify(result)
-
-
-# @app.route("/upload-hr-documents", methods=["POST"])
-# def upload_hr_documents():
-#     """
-#     API endpoint to upload multiple HR documents and store them in ChromaDB.
-#     """
-#     if "files" not in request.files:
-#         return jsonify({"error": "No files provided"}), 400
-
-#     files = request.files.getlist("files")
-#     if not files:
-#         return jsonify({"error": "No files received"}), 400
-
-#     result = save_bulk_hr_documents(files)
-
-#     if "error" in result:
-#         return jsonify(result), 400
-
-#     return jsonify(result)
 
 
 @document_bp.route("/list-resumes", methods=["GET"])
