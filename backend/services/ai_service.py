@@ -173,6 +173,18 @@ def answer_hr_question(question):
     return query_deepseek(prompt)
 
 
+TELEGRAM_BOT_TOKEN = "7601191406:AAEWbFB-xd6YzvqJiG3OQ0JVTw7DjtsTmcY"
+
+
+def send_telegram_message(chat_id, text):
+    """
+    Sends a message to a Telegram user.
+    """
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {"chat_id": chat_id, "text": text}
+    requests.post(url, json=payload)
+
+
 def screen_resumes(job_description, resumes):
     """
     Screens resumes against a job description using DeepSeek AI.

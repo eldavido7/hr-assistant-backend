@@ -10,6 +10,7 @@ from services.ai_service import (
     analyze_engagement,
     answer_hr_question,
     screen_resumes,
+    send_telegram_message,
 )
 from utils.resume_parser import parse_resume
 from services.document_service import (
@@ -218,12 +219,24 @@ def ask_hr_api():
     """
     data = request.get_json()
 
+    # Check if it's a Telegram message
+    if "message" in data:
+        chat_id = data["message"]["chat"]["id"]
+        question = data["message"]["text"]
+
+        # Get answer from HR policies
+        result = answer_hr_question(question)
+
+        # Send answer back to Telegram
+        send_telegram_message(chat_id, result["answer"])
+
+        return jsonify({"status": "ok"}), 200
+
+    # If it's a direct API call
     if "question" not in data:
         return jsonify({"error": "Missing question"}), 400
 
     question = data["question"]
-
-    # Get answer from HR policies
     result = answer_hr_question(question)
 
     return jsonify(result)
