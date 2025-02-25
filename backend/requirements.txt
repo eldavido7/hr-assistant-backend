@@ -14,7 +14,6 @@ beautifulsoup4
 blinker
 build
 cachetools
-camelot-py
 certifi
 cffi
 chardet
