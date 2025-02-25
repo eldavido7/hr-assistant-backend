@@ -144,7 +144,6 @@ pyasn1
 pyasn1_modules
 pycparser
 pycryptodome
---no-binary :all:
 pydantic
 pydantic-settings
 pydantic_core
