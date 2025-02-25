@@ -14,6 +14,11 @@ DEEPSEEK_API_KEY = os.getenv(
 
 DEEPSEEK_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+if not TELEGRAM_BOT_TOKEN:
+    raise ValueError("TELEGRAM_BOT_TOKEN is not set in the .env file")
+
 
 def query_deepseek(prompt):
     """
@@ -171,9 +176,6 @@ def answer_hr_question(question):
     """
 
     return query_deepseek(prompt)
-
-
-TELEGRAM_BOT_TOKEN = "7601191406:AAEWbFB-xd6YzvqJiG3OQ0JVTw7DjtsTmcY"
 
 
 def send_telegram_message(chat_id, text):
