@@ -237,6 +237,8 @@ def ask_hr_api():
         return jsonify({"error": "Missing question"}), 400
 
     question = data["question"]
+
+    # Get answer from HR policies
     result = answer_hr_question(question)
 
     return jsonify(result)
