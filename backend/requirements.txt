@@ -1,5 +1,3 @@
-pycryptodome>=3.10.1
-pycrypto==0 ;  # Block pycrypto installation
 aiofiles
 aiohappyeyeballs
 aiohttp
