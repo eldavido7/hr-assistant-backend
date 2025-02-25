@@ -17,6 +17,7 @@ from services.document_service import (
     clear_insights,
     clear_resumes,
     get_insights,
+    save_bulk_hr_documents,
     store_insight,
     store_text_in_chromadb,
     retrieve_relevant_resumes,
@@ -333,10 +334,10 @@ def upload_resumes():
     )
 
 
-@document_bp.route("/upload-hr-documents", methods=["POST"])
+@app.route("/upload-hr-documents", methods=["POST"])
 def upload_hr_documents():
     """
-    API endpoint to upload multiple HR documents and store in ChromaDB's HR documents collection.
+    API endpoint to upload multiple HR documents and store them in ChromaDB.
     """
     if "files" not in request.files:
         return jsonify({"error": "No files provided"}), 400
@@ -345,33 +346,53 @@ def upload_hr_documents():
     if not files:
         return jsonify({"error": "No files received"}), 400
 
-    uploaded_files = []
-    for file in files:
-        if file.filename == "":
-            continue  # Skip empty files
+    result = save_bulk_hr_documents(files)
 
-        document_text = parse_resume(file.stream)
-        if not document_text:
-            continue  # Skip empty or invalid files
+    if "error" in result:
+        return jsonify(result), 400
 
-        metadata = {
-            "filename": file.filename,
-            "type": "hr_document",
-        }
+    return jsonify(result)
 
-        # Store in ChromaDB
-        store_text_in_chromadb(document_text, metadata)
-        uploaded_files.append(file.filename)
 
-    if not uploaded_files:
-        return jsonify({"error": "No valid HR documents processed"}), 400
+# @document_bp.route("/upload-hr-documents", methods=["POST"])
+# def upload_hr_documents():
+#     """
+#     API endpoint to upload multiple HR documents and store in ChromaDB's HR documents collection.
+#     """
+#     if "files" not in request.files:
+#         return jsonify({"error": "No files provided"}), 400
 
-    return jsonify(
-        {
-            "message": "HR documents uploaded successfully",
-            "uploaded_files": uploaded_files,
-        }
-    )
+#     files = request.files.getlist("files")
+#     if not files:
+#         return jsonify({"error": "No files received"}), 400
+
+#     uploaded_files = []
+#     for file in files:
+#         if file.filename == "":
+#             continue  # Skip empty files
+
+#         document_text = parse_resume(file.stream)
+#         if not document_text:
+#             continue  # Skip empty or invalid files
+
+#         metadata = {
+#             "filename": file.filename,
+#             # "type": "hr_document",
+#         }
+
+#         # Store in ChromaDB
+#         store_text_in_chromadb(document_text, metadata)
+#         uploaded_files.append(file.filename)
+
+#     if not uploaded_files:
+#         return jsonify({"error": "No valid HR documents processed"}), 400
+
+#     return jsonify(
+#         {
+#             "message": "HR documents uploaded successfully",
+#             "uploaded_files": uploaded_files,
+#         }
+#     )
 
 
 @document_bp.route("/clear-insights", methods=["DELETE"])
