@@ -1,3 +1,5 @@
+pycrypto==0.0.0
+pycryptodome
 aiofiles
 aiohappyeyeballs
 aiohttp
