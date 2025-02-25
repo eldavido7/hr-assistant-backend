@@ -128,7 +128,6 @@ orjson
 overrides
 packaging
 pandas
-pdfminer.six
 pdfplumber
 pillow
 playwright
