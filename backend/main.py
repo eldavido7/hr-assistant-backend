@@ -1,16 +1,18 @@
+import re
 from flask import Flask, request, jsonify, Blueprint
 from flask_cors import CORS
 from flask_compress import Compress
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from services.ai_service import (
+    handle_telegram_request,
+    process_deepseek_response,
     query_deepseek,
     analyze_feedback,
     predict_retention_risk,
     analyze_engagement,
     answer_hr_question,
     screen_resumes,
-    send_telegram_message,
 )
 from utils.resume_parser import parse_resume
 from services.document_service import (
@@ -218,30 +220,35 @@ def ask_hr_api():
     API endpoint for employees to ask HR-related questions.
     """
     data = request.get_json()
+    print("Received data:", data)
 
-    # Check if it's a Telegram message
+    # Handle Telegram messages
     if "message" in data:
-        chat_id = data["message"]["chat"]["id"]
-        question = data["message"]["text"]
+        return handle_telegram_request(data)
 
-        # Get answer from HR policies
-        result = answer_hr_question(question)
-
-        # Send answer back to Telegram
-        send_telegram_message(chat_id, result["answer"])
-
-        return jsonify({"status": "ok"}), 200
-
-    # If it's a direct API call
+    # Handle regular API requests
     if "question" not in data:
         return jsonify({"error": "Missing question"}), 400
 
     question = data["question"]
-
-    # Get answer from HR policies
     result = answer_hr_question(question)
 
-    return jsonify(result)
+    print("Raw AI Response:", result)
+
+    processed_answer = process_deepseek_response(result)
+    print("Processed answer:", processed_answer)
+
+    # Extra cleaning to remove any remaining markdown or JSON formatting
+    if "```" in processed_answer:
+        # Remove all code block formatting
+        processed_answer = re.sub(r"```(?:json|python|)\n", "", processed_answer)
+        processed_answer = processed_answer.replace("```", "")
+
+    # Final check for empty response
+    if not processed_answer or processed_answer.strip() == "":
+        processed_answer = "I apologize, but I couldn't generate a proper response. Can you send that message again?"
+
+    return jsonify({"answer": processed_answer})
 
 
 @app.route("/screen-resumes", methods=["POST"])
