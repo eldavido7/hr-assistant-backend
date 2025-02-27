@@ -6,3 +6,4 @@ requests
 dotenv
 pdfplumber
 chromadb
+gunicorn
