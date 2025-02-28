@@ -22,6 +22,14 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 if not TELEGRAM_BOT_TOKEN:
     raise ValueError("TELEGRAM_BOT_TOKEN is not set in the .env file")
 
+WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN")
+PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
+
+if not PHONE_NUMBER_ID or not WHATSAPP_ACCESS_TOKEN:
+    raise ValueError(
+        "Missing WHATSAPP_PHONE_NUMBER_ID or WHATSAPP_ACCESS_TOKEN in environment variables."
+    )
+
 
 def query_deepseek(prompt):
     """
@@ -243,6 +251,14 @@ def process_deepseek_response(response):
     if response == '{"answer": ""}' or response == {"answer": ""}:
         return "I apologize, but I couldn't generate a proper response. Can you send that message again?"
 
+    # Direct check for simple JSON object with just an answer key (your specific case)
+    if isinstance(response, dict) and len(response) == 1 and "answer" in response:
+        answer_text = response["answer"]
+        # Remove any asterisks from the response
+        if isinstance(answer_text, str):
+            answer_text = answer_text.replace("*", "")
+            return answer_text.strip()
+
     # Handle code block format (```json {...} ```)
     if isinstance(response, str) and "```json" in response:
         try:
@@ -250,7 +266,11 @@ def process_deepseek_response(response):
             json_content = response.split("```json")[1].split("```")[0].strip()
             parsed_json = json.loads(json_content)
             if "answer" in parsed_json:
-                return parsed_json["answer"]
+                answer_text = parsed_json["answer"]
+                # Remove any asterisks
+                if isinstance(answer_text, str):
+                    answer_text = answer_text.replace("*", "")
+                    return answer_text.strip()
         except:
             pass
 
@@ -269,7 +289,11 @@ def process_deepseek_response(response):
                         )
                         parsed_json = json.loads(json_content)
                         if "answer" in parsed_json:
-                            return parsed_json["answer"]
+                            answer_text = parsed_json["answer"]
+                            # Remove any asterisks
+                            if isinstance(answer_text, str):
+                                answer_text = answer_text.replace("*", "")
+                                return answer_text.strip()
                     except:
                         pass
 
@@ -281,14 +305,28 @@ def process_deepseek_response(response):
                         try:
                             inner_dict = json.loads(answer_content)
                             if "answer" in inner_dict:
-                                return inner_dict["answer"]
+                                answer_text = inner_dict["answer"]
+                                # Remove any asterisks
+                                if isinstance(answer_text, str):
+                                    answer_text = answer_text.replace("*", "")
+                                    return answer_text.strip()
                         except:
                             pass
-                    # Otherwise return it directly
-                    return answer_content
+                    # Otherwise return it directly with asterisks removed
+                    answer_text = answer_content
+                    if isinstance(answer_text, str):
+                        answer_text = answer_text.replace("*", "")
+                        return answer_text.strip()
                 elif isinstance(answer_content, dict) and "answer" in answer_content:
-                    return answer_content["answer"]
-            return str(response)
+                    answer_text = answer_content["answer"]
+                    # Remove any asterisks
+                    if isinstance(answer_text, str):
+                        answer_text = answer_text.replace("**", "")
+                        return answer_text.strip()
+
+            # If we get here, return the string representation with asterisks removed
+            result = str(response)
+            return result.replace("*", "").strip()
 
         # If response is a string
         if isinstance(response, str):
@@ -308,7 +346,10 @@ def process_deepseek_response(response):
                         # Extra check for empty answer
                         if not answer_content or answer_content.strip() == "":
                             return "I apologize, but I couldn't generate a proper response. Can you send that message again?"
-                        return answer_content
+                        # Remove any asterisks
+                        if isinstance(answer_content, str):
+                            answer_content = answer_content.replace("*", "")
+                        return answer_content.strip()
 
                 # Otherwise proceed with normal parsing
                 response_dict = json.loads(response)
@@ -334,7 +375,11 @@ def process_deepseek_response(response):
                             )
                             parsed_json = json.loads(json_content)
                             if "answer" in parsed_json:
-                                return parsed_json["answer"]
+                                answer_text = parsed_json["answer"]
+                                # Remove any asterisks
+                                if isinstance(answer_text, str):
+                                    answer_text = answer_text.replace("*", "")
+                                    return answer_text.strip()
                         except:
                             pass
 
@@ -345,26 +390,39 @@ def process_deepseek_response(response):
                         try:
                             inner_dict = json.loads(answer_content)
                             if "answer" in inner_dict:
-                                return inner_dict["answer"]
+                                answer_text = inner_dict["answer"]
+                                # Remove any asterisks
+                                if isinstance(answer_text, str):
+                                    answer_text = answer_text.replace("*", "")
+                                    return answer_text.strip()
                         except:
-                            # If it fails to parse as JSON, return the string directly
-                            return answer_content
+                            # If it fails to parse as JSON, return the string directly with asterisks removed
+                            if isinstance(answer_content, str):
+                                answer_content = answer_content.replace("*", "")
+                            return answer_content.strip()
                     # If answer is already a dict
                     elif (
                         isinstance(answer_content, dict) and "answer" in answer_content
                     ):
-                        return answer_content["answer"]
-                    # Otherwise return the answer string directly
+                        answer_text = answer_content["answer"]
+                        # Remove any asterisks
+                        if isinstance(answer_text, str):
+                            answer_text = answer_text.replace("*", "")
+                            return answer_text.strip()
+                    # Otherwise return the answer string directly with asterisks removed
                     else:
-                        return answer_content
+                        if isinstance(answer_content, str):
+                            answer_content = answer_content.replace("*", "")
+                        return answer_content.strip()
 
-                # Fallback: return any content we can find
-                return str(response_dict)
+                # Fallback: return any content we can find with asterisks removed
+                result = str(response_dict)
+                return result.replace("*", "").strip()
 
             except json.JSONDecodeError:
-                # If not JSON, return the raw string if it's not empty
+                # If not JSON, return the raw string if it's not empty, with asterisks removed
                 if response.strip():
-                    return response.strip()
+                    return response.strip().replace("*", "")
 
     except Exception as e:
         print(f"Error processing DeepSeek response: {e}")
@@ -432,3 +490,75 @@ def handle_telegram_request(data):
     except Exception as e:
         print(f"Exception in handle_telegram_request: {str(e)}")
         return jsonify({"status": "Error but acknowledged"}), 200
+
+
+def handle_whatsapp_request(data):
+    """
+    Process incoming WhatsApp message and reply back using the HR AI system.
+    """
+    try:
+        entry = data["entry"][0]
+        changes = entry.get("changes", [])
+        if not changes:
+            return jsonify({"status": "no_changes"}), 200
+
+        message_data = changes[0].get("value", {}).get("messages", [])
+        if not message_data:
+            return jsonify({"status": "no_messages"}), 200
+
+        message = message_data[0]
+        sender_phone_number = message.get("from")
+        message_text = message.get("text", {}).get("body")
+
+        if not sender_phone_number or not message_text:
+            return jsonify({"status": "invalid_message"}), 200
+
+        print(f"WhatsApp message from {sender_phone_number}: {message_text}")
+
+        # Send question to DeepSeek
+        result = answer_hr_question(message_text)
+
+        print("Raw AI Response:", result)
+
+        processed_answer = process_deepseek_response(result)
+        print("Processed answer:", processed_answer)
+
+        if "```" in processed_answer:
+            processed_answer = re.sub(r"```(?:json|python|)\n", "", processed_answer)
+            processed_answer = processed_answer.replace("```", "")
+
+        if not processed_answer.strip():
+            processed_answer = "I apologize, but I couldn't generate a proper response. Can you send that message again?"
+
+        # Send response back to WhatsApp
+        send_whatsapp_message(sender_phone_number, processed_answer)
+
+        return jsonify({"status": "message_processed"}), 200
+
+    except Exception as e:
+        print(f"Error handling WhatsApp message: {e}")
+        return jsonify({"error": "Failed to process message"}), 500
+
+
+def send_whatsapp_message(phone_number, message):
+    """
+    Send a reply message back to the user on WhatsApp.
+    """
+    url = f"https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/messages"
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_ACCESS_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": phone_number,
+        "type": "text",
+        "text": {"body": message},
+    }
+
+    response = requests.post(url, headers=headers, json=payload)
+    print(f"WhatsApp send message response: {response.status_code}, {response.text}")
+
+    if response.status_code >= 400:
+        print(f"Failed to send WhatsApp message to {phone_number}: {response.text}")

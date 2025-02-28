@@ -6,6 +6,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from services.ai_service import (
     handle_telegram_request,
+    handle_whatsapp_request,
     process_deepseek_response,
     query_deepseek,
     analyze_feedback,
@@ -214,19 +215,35 @@ def get_insights_api():
     return jsonify({"insights": insights})
 
 
-@app.route("/ask-hr", methods=["POST"])
+@app.route("/ask-hr", methods=["GET", "POST"])
 def ask_hr_api():
     """
-    API endpoint for employees to ask HR-related questions.
+    Unified API endpoint for employees to ask HR-related questions.
+    Handles Telegram, WhatsApp, and regular API requests.
     """
+    if request.method == "GET":
+        # This handles the WhatsApp webhook verification
+        mode = request.args.get("hub.mode")
+        challenge = request.args.get("hub.challenge")
+        verify_token = request.args.get("hub.verify_token")
+
+        if mode == "subscribe" and verify_token == "my_secret_token_123":
+            return challenge, 200
+        return "Verification failed", 403
+
+    # POST request - actual message handling
     data = request.get_json()
     print("Received data:", data)
 
-    # Handle Telegram messages
+    # Handle Telegram messages (already working)
     if "message" in data:
         return handle_telegram_request(data)
 
-    # Handle regular API requests
+    # Handle WhatsApp messages
+    if "entry" in data and isinstance(data["entry"], list):
+        return handle_whatsapp_request(data)
+
+    # Handle regular API requests (direct from UI or other systems)
     if "question" not in data:
         return jsonify({"error": "Missing question"}), 400
 
@@ -238,14 +255,13 @@ def ask_hr_api():
     processed_answer = process_deepseek_response(result)
     print("Processed answer:", processed_answer)
 
-    # Extra cleaning to remove any remaining markdown or JSON formatting
+    # Extra cleaning (already handled in your existing code)
     if "```" in processed_answer:
         # Remove all code block formatting
         processed_answer = re.sub(r"```(?:json|python|)\n", "", processed_answer)
         processed_answer = processed_answer.replace("```", "")
 
-    # Final check for empty response
-    if not processed_answer or processed_answer.strip() == "":
+    if not processed_answer.strip():
         processed_answer = "I apologize, but I couldn't generate a proper response. Can you send that message again?"
 
     return jsonify({"answer": processed_answer})
