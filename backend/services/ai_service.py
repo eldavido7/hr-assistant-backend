@@ -542,9 +542,21 @@ def handle_whatsapp_request(data):
         processed_answer = process_deepseek_response(result)
         print("Processed answer:", processed_answer)
 
+        # Clean up any remaining code blocks
         if "```" in processed_answer:
             processed_answer = re.sub(r"```(?:json|python|)\n", "", processed_answer)
             processed_answer = processed_answer.replace("```", "")
+
+        # Add this extra step to clean any remaining JSON formatting (same as in Telegram handler)
+        if processed_answer.strip().startswith(
+            "{"
+        ) and processed_answer.strip().endswith("}"):
+            try:
+                json_response = json.loads(processed_answer)
+                if "answer" in json_response:
+                    processed_answer = json_response["answer"]
+            except:
+                pass
 
         if not processed_answer.strip():
             processed_answer = "I apologize, but I couldn't generate a proper response. Can you send that message again?"
