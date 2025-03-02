@@ -6,6 +6,7 @@ import os
 from dotenv import load_dotenv
 from services.document_service import retrieve_relevant_text
 import logging
+from datetime import datetime, timezone
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -513,7 +514,9 @@ def handle_whatsapp_request(data):
         if not sender_phone_number or not message_text:
             return jsonify({"status": "invalid_message"}), 200
 
-        print(f"WhatsApp message from {sender_phone_number}: {message_text}")
+        # Create or reuse session (even without history, this is useful)
+        session = get_or_create_whatsapp_session(sender_phone_number)
+        print(f"Session info for {sender_phone_number}: {session}")
 
         # Send question to DeepSeek
         result = answer_hr_question(message_text)
@@ -562,3 +565,31 @@ def send_whatsapp_message(phone_number, message):
 
     if response.status_code >= 400:
         print(f"Failed to send WhatsApp message to {phone_number}: {response.text}")
+
+
+from datetime import datetime, timedelta
+
+# Global session store (in-memory for now)
+whatsapp_sessions = {}
+
+
+def get_or_create_whatsapp_session(phone_number):
+    now = datetime.now(timezone.utc)
+
+    # Cleanup expired sessions (24-hour window)
+    for number, session in list(whatsapp_sessions.items()):
+        if (now - session["last_message_time"]) > timedelta(hours=24):
+            del whatsapp_sessions[number]
+
+    if phone_number not in whatsapp_sessions:
+        whatsapp_sessions[phone_number] = {
+            "created_at": now,
+            "last_message_time": now,
+            "user_type": "new",
+        }
+        print(f"New session created for {phone_number}")
+    else:
+        whatsapp_sessions[phone_number]["last_message_time"] = now
+        whatsapp_sessions[phone_number]["user_type"] = "returning"
+
+    return whatsapp_sessions[phone_number]
