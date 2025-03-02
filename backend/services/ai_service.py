@@ -260,6 +260,22 @@ def process_deepseek_response(response):
             answer_text = answer_text.replace("*", "")
             return answer_text.strip()
 
+        # NEW CHECK: Handle the case where the response is a string representation of JSON with an answer key
+        if (
+            isinstance(response, str)
+            and response.strip().startswith("{")
+            and response.strip().endswith("}")
+        ):
+            try:
+                json_obj = json.loads(response)
+                if "answer" in json_obj:
+                    answer_text = json_obj["answer"]
+                    if isinstance(answer_text, str):
+                        answer_text = answer_text.replace("*", "")
+                        return answer_text.strip()
+            except json.JSONDecodeError:
+                pass
+
     # Handle code block format (```json {...} ```)
     if isinstance(response, str) and "```json" in response:
         try:
