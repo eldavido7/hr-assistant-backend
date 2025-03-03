@@ -61,7 +61,9 @@ def query_deepseek(prompt):
         if (
             "choices" in result
             and result["choices"]
-            and result["choices"][0]["message"]["content"]
+            and "message" in result["choices"][0]
+            and "content" in result["choices"][0]["message"]
+            and result["choices"][0]["message"]["content"].strip()
         ):
             content = result["choices"][0]["message"]["content"]
             print(f"DeepSeek raw response content: {content[:200]}...")
