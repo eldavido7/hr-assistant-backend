@@ -41,35 +41,48 @@ def query_deepseek(prompt):
         "Content-Type": "application/json",
     }
     data = {
-        "model": "deepseek/deepseek-chat:free",  # Use the appropriate DeepSeek AI model
-        "messages": [{"role": "system", "content": prompt}],
+        "model": "deepseek/deepseek-chat:free",
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a helpful AI assistant.",
+            },  # Generic system message
+            {"role": "user", "content": prompt},  # Send actual prompt as user message
+        ],
     }
 
     try:
-        print(f"Sending prompt to DeepSeek: {prompt[:100]}...")  # Log truncated prompt
+        print(f"Sending prompt to DeepSeek: {prompt[:100]}...")
         response = requests.post(DEEPSEEK_API_URL, json=data, headers=headers)
         response.raise_for_status()  # Raises an error for bad responses (4xx, 5xx)
 
-        print(f"DeepSeek status code: {response.status_code}")
         result = response.json()
 
-        if "choices" in result and result["choices"]:
+        if (
+            "choices" in result
+            and result["choices"]
+            and result["choices"][0]["message"]["content"]
+        ):
             content = result["choices"][0]["message"]["content"]
-            print(
-                f"DeepSeek raw response content: {content[:200]}..."
-            )  # Log truncated response
+            print(f"DeepSeek raw response content: {content[:200]}...")
 
             # Try to format the response as JSON if it's not already
             if not (content.strip().startswith("{") and content.strip().endswith("}")):
                 try:
                     # If it's plain text, wrap it in our expected JSON format
                     return json.dumps({"answer": content})
-                except:
-                    pass
+                except Exception as e:
+                    logging.error(f"Error formatting response: {e}")
+                    return json.dumps(
+                        {"answer": content}
+                    )  # Return anyway, don't silently fail
 
             return content
         else:
-            logging.error("DeepSeek API returned an empty response.")
+            logging.error(
+                "DeepSeek API returned an empty or invalid response structure."
+            )
+            logging.error(f"Full response: {result}")
             return json.dumps(
                 {
                     "answer": "I apologize, but I couldn't get a response from my knowledge base."
@@ -80,6 +93,9 @@ def query_deepseek(prompt):
         return json.dumps(
             {"answer": f"I'm having technical difficulties right now: {str(e)}"}
         )
+    except Exception as e:
+        logging.error(f"Unexpected error querying DeepSeek: {e}")
+        return json.dumps({"answer": f"An unexpected error occurred: {str(e)}"})
 
 
 def analyze_resume(resume_text, job_role):
