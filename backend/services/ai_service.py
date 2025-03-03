@@ -193,8 +193,7 @@ def answer_hr_question(question):
     Relevant HR Policy Documents:
     {relevant_text}
 
-    If the answer is not found in the provided documents, respond with:
-    "I couldn't find an answer in the available HR policies, please ask a question related to it, thank you."
+    If the answer is not found in the provided documents, politely explain that the answer is not available in the current HR policies, and suggest the user clarify the question or ask something else related to documents.
 
     Additionally, if the question is a greeting, polite message, or general chat (e.g., "hello", "thank you", "how are you?", "good morning"):
     - Respond appropriately in a friendly, professional manner.
