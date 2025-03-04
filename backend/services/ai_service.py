@@ -195,23 +195,56 @@ def analyze_engagement(feedback_list):
     return query_deepseek(prompt)
 
 
+# def answer_hr_question(question):
+#     """
+#     Answers HR-related questions using uploaded HR documents.
+#     Handles greetings and general conversation dynamically.
+#     """
+#     # Retrieve relevant content from HR documents
+#     relevant_text = retrieve_relevant_text(question)
+
+#     prompt = f"""
+#     You are an AI HR assistant. Answer the following question using only the provided HR policy documents.
+
+#     Question: {question}
+
+#     Relevant HR Policy Documents:
+#     {relevant_text}
+
+#     If the answer is not found in the provided documents, politely explain that the answer is not available in the current HR policies, and suggest the user clarify the question or ask something else related to documents.
+
+#     Additionally, if the question is a greeting, polite message, or general chat (e.g., "hello", "thank you", "how are you?", "good morning"):
+#     - Respond appropriately in a friendly, professional manner.
+#     - If the message is just a greeting, keep it short and engaging (e.g., "Hello! How can I assist you today?").
+#     - If the message expresses gratitude (e.g., "thank you"), acknowledge it in a warm way (e.g., "You're very welcome! Let me know if you need anything else.").
+#     - Keep responses polite and slightly humorous when appropriate, but always professional.
+
+#     Provide a structured response in exactly this JSON format:
+#     {{
+#       "answer": "<your detailed answer here>"
+#     }}
+#     """
+
+#     return query_deepseek(prompt)
+
+
 def answer_hr_question(question):
     """
-    Answers HR-related questions using uploaded HR documents.
+    Answers questions using uploaded documents.
     Handles greetings and general conversation dynamically.
     """
     # Retrieve relevant content from HR documents
     relevant_text = retrieve_relevant_text(question)
 
     prompt = f"""
-    You are an AI HR assistant. Answer the following question using only the provided HR policy documents.
+    You are an AI assistant. Answer the following question using only the provided documents.
 
     Question: {question}
 
-    Relevant HR Policy Documents:
+    Relevant Documents:
     {relevant_text}
 
-    If the answer is not found in the provided documents, politely explain that the answer is not available in the current HR policies, and suggest the user clarify the question or ask something else related to documents.
+    If the answer is not found in the provided documents, politely explain that the answer is not available in the uploaded files, and suggest the user clarify the question or ask something else related to documents.
 
     Additionally, if the question is a greeting, polite message, or general chat (e.g., "hello", "thank you", "how are you?", "good morning"):
     - Respond appropriately in a friendly, professional manner.
