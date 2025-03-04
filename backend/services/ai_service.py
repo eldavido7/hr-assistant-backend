@@ -87,7 +87,7 @@ def query_deepseek(prompt):
             logging.error(f"Full response: {result}")
             return json.dumps(
                 {
-                    "answer": "I apologize, but I couldn't get a response from my knowledge base."
+                    "answer": "I apologize, but I couldn't generate a proper response. Can you send that message again?"
                 }
             )
     except requests.RequestException as e:
@@ -292,7 +292,7 @@ def process_deepseek_response(response):
     """
     # Handle empty responses
     if not response:
-        return "I apologize, but I couldn't get a response from my knowledge base. Can you send that message again?"
+        return "I apologize, but I couldn't generate a proper response. Can you send that message again?"
 
     print(
         f"Processing response type: {type(response)}, content: {str(response)[:200]}..."
