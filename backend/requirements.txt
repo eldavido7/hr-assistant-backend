@@ -7,4 +7,3 @@ dotenv
 pdfplumber
 chromadb
 gunicorn
-gevent
