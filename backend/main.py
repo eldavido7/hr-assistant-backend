@@ -464,4 +464,4 @@ def clear_hr_documents_endpoint():
 app.register_blueprint(document_bp, url_prefix="/documents")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False, use_reloader=False)
