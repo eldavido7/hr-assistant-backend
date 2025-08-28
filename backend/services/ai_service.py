@@ -35,69 +35,81 @@ if not PHONE_NUMBER_ID or not WHATSAPP_ACCESS_TOKEN:
 def query_deepseek(prompt):
     """
     Sends a prompt to DeepSeek AI and returns the response.
+    Falls back to 'deepseek/deepseek-r1:free' if the primary model is rate-limited.
     """
     headers = {
         "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
         "Content-Type": "application/json",
     }
-    data = {
-        "model": "deepseek/deepseek-chat-v3-0324:free",
-        "messages": [
-            {
-                "role": "system",
-                "content": "You are a helpful AI assistant.",
-            },  # Generic system message
-            {"role": "user", "content": prompt},  # Send actual prompt as user message
-        ],
-    }
 
-    try:
-        print(f"Sending prompt to DeepSeek: {prompt[:100]}...")
-        response = requests.post(DEEPSEEK_API_URL, json=data, headers=headers)
-        response.raise_for_status()  # Raises an error for bad responses (4xx, 5xx)
+    models_to_try = [
+        "deepseek/deepseek-chat-v3-0324:free",  # Primary model
+        "deepseek/deepseek-r1:free",  # Fallback model
+    ]
 
-        result = response.json()
+    for model in models_to_try:
+        data = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": "You are a helpful AI assistant."},
+                {"role": "user", "content": prompt},
+            ],
+        }
 
-        if (
-            "choices" in result
-            and result["choices"]
-            and "message" in result["choices"][0]
-            and "content" in result["choices"][0]["message"]
-            and result["choices"][0]["message"]["content"].strip()
-        ):
-            content = result["choices"][0]["message"]["content"]
-            print(f"DeepSeek raw response content: {content[:200]}...")
+        try:
+            print(f"Sending prompt to DeepSeek ({model}): {prompt[:100]}...")
+            response = requests.post(DEEPSEEK_API_URL, json=data, headers=headers)
 
-            # Try to format the response as JSON if it's not already
-            if not (content.strip().startswith("{") and content.strip().endswith("}")):
-                try:
-                    # If it's plain text, wrap it in our expected JSON format
-                    return json.dumps({"answer": content})
-                except Exception as e:
-                    logging.error(f"Error formatting response: {e}")
-                    return json.dumps(
-                        {"answer": content}
-                    )  # Return anyway, don't silently fail
+            if response.status_code == 429:
+                print(f"Model {model} is rate-limited. Trying next model...")
+                continue  # Try the next model in the list
 
-            return content
-        else:
-            logging.error(
-                "DeepSeek API returned an empty or invalid response structure."
-            )
-            logging.error(f"Full response: {result}")
-            return json.dumps(
-                {
-                    "answer": "I apologize, but I couldn't generate a proper response. Can you send that message again?"
-                }
-            )
-    except requests.RequestException as e:
-        logging.error(f"DeepSeek API request failed: {e}")
-        return json.dumps(
-            {"answer": f"I'm having technical difficulties right now: {str(e)}"}
-        )
-    except Exception as e:
-        logging.error(f"Unexpected error querying DeepSeek: {e}")
-        return json.dumps({"answer": f"An unexpected error occurred: {str(e)}"})
+            response.raise_for_status()
+            result = response.json()
+
+            if (
+                "choices" in result
+                and result["choices"]
+                and "message" in result["choices"][0]
+                and "content" in result["choices"][0]["message"]
+                and result["choices"][0]["message"]["content"].strip()
+            ):
+                content = result["choices"][0]["message"]["content"]
+                print(f"DeepSeek raw response content: {content[:200]}...")
+
+                if not (
+                    content.strip().startswith("{") and content.strip().endswith("}")
+                ):
+                    try:
+                        return json.dumps({"answer": content})
+                    except Exception as e:
+                        logging.error(f"Error formatting response: {e}")
+                        return json.dumps({"answer": content})
+
+                return content
+            else:
+                logging.error(
+                    f"DeepSeek API returned empty or invalid response: {result}"
+                )
+                return json.dumps(
+                    {
+                        "answer": "I couldn't generate a proper response. Please try again."
+                    }
+                )
+
+        except requests.RequestException as e:
+            logging.error(f"DeepSeek API request failed for model {model}: {e}")
+            if model == models_to_try[-1]:
+                return json.dumps({"answer": f"Technical difficulties: {str(e)}"})
+        except Exception as e:
+            logging.error(f"Unexpected error querying DeepSeek for model {model}: {e}")
+            if model == models_to_try[-1]:
+                return json.dumps({"answer": f"An unexpected error occurred: {str(e)}"})
+
+    # If all models fail
+    return json.dumps(
+        {"answer": "All models are currently unavailable. Please try again later."}
+    )
 
 
 def analyze_resume(resume_text, job_role):
