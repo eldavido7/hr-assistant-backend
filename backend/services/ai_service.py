@@ -43,7 +43,7 @@ def query_deepseek(prompt):
     }
 
     models_to_try = [
-        "deepseek/deepseek-chat-v3-0324:free",  # Primary model
+        "deepseek/deepseek-chat-v3.1:free",  # Primary model
         "deepseek/deepseek-r1:free",  # Fallback model
     ]
 
