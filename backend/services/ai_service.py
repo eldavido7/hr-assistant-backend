@@ -249,14 +249,17 @@ def answer_hr_question(question):
     relevant_text = retrieve_relevant_text(question)
 
     prompt = f"""
-    You are an AI assistant. Answer the following question using only the provided documents.
+    You are an AI assistant. Answer the following question using only the information provided below.
 
     Question: {question}
 
     Relevant Documents:
     {relevant_text}
 
-    If the answer is not found in the provided documents, politely explain that the answer is not available in the uploaded files, and suggest the user clarify the question or ask something else related to documents.
+    If the question cannot be answered with the available information, do not try to guess or make something up. 
+    Instead, politely explain that the answer is not available, without mentioning 'documents' or 'sources'. 
+    Say that you can only help with the topics covered in the available information, then list those topics. 
+    Finally, invite the user to clarify their question or ask about one of those areas.
 
     Additionally, if the question is a greeting, polite message, or general chat (e.g., "hello", "thank you", "how are you?", "good morning"):
     - Respond appropriately in a friendly, professional manner.
