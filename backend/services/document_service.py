@@ -24,19 +24,54 @@ hr_insights_collection = client.get_or_create_collection(
 def retrieve_relevant_text(query):
     """
     Retrieves relevant text from stored HR documents based on the query.
+    Returns empty string if no documents are available or if collection is empty.
     """
-    results = hr_collection.query(query_texts=[query], n_results=3)
+    try:
+        # Check if collection has any documents
+        collection_count = hr_collection.count()
+        print(f"HR Collection document count: {collection_count}")
 
-    # Extract relevant chunks from the results
-    relevant_texts = [
-        doc for doc_list in results.get("documents", []) for doc in doc_list if doc
-    ]
+        if collection_count == 0:
+            logging.warning("HR collection is empty. No documents have been uploaded.")
+            return ""
 
-    if not relevant_texts:
-        logging.warning(f"No relevant HR policies found for query: '{query}'")
-        return "No relevant HR policies found."
+        # Query the collection
+        results = hr_collection.query(query_texts=[query], n_results=3)
 
-    return "\n\n".join(relevant_texts)
+        # Debug: Log what we got back
+        print(f"Query results structure: {results.keys()}")
+        print(f"Documents found: {len(results.get('documents', [[]])[0])}")
+
+        # Extract relevant chunks from the results
+        relevant_texts = [
+            doc
+            for doc_list in results.get("documents", [])
+            for doc in doc_list
+            if doc and doc.strip() and doc.strip() not in ["N/A", "N/A N/A"]
+        ]
+
+        if not relevant_texts:
+            logging.warning(f"No relevant HR policies found for query: '{query}'")
+            return ""
+
+        # Join and clean the texts
+        combined_text = "\n\n".join(relevant_texts)
+
+        # Additional validation - check if we got real content
+        if (
+            len(combined_text.strip()) < 10
+        ):  # Less than 10 chars is probably not real content
+            logging.warning(f"Retrieved text too short: '{combined_text}'")
+            return ""
+
+        print(
+            f"Successfully retrieved {len(combined_text)} characters of relevant text"
+        )
+        return combined_text
+
+    except Exception as e:
+        logging.error(f"Error retrieving relevant text: {e}", exc_info=True)
+        return ""
 
 
 def store_text_in_chromadb(text, metadata):

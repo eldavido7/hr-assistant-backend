@@ -34,6 +34,11 @@ if not PHONE_NUMBER_ID or not WHATSAPP_ACCESS_TOKEN:
     )
 
 
+# Configure token limits
+MAX_OUTPUT_TOKENS = 2000  # Optimized for Render free tier
+MAX_CONTEXT_TOKENS = 12000  # Slightly under max for efficiency and to avoid errors
+
+
 def query_deepseek(prompt):
     """
     Sends a prompt to DeepSeek AI and returns the response.
@@ -48,15 +53,19 @@ def query_deepseek(prompt):
             {
                 "role": "system",
                 "content": "You are a helpful AI assistant.",
-            },  # Generic system message
-            {"role": "user", "content": prompt},  # Send actual prompt as user message
+            },
+            {"role": "user", "content": prompt},
         ],
+        "max_tokens": MAX_OUTPUT_TOKENS,
+        "temperature": 0.7,
+        "top_p": 0.9,
+        # "context_length": MAX_CONTEXT_TOKENS,
     }
 
     try:
         print(f"Sending prompt to DeepSeek: {prompt[:100]}...")
         response = requests.post(DEEPSEEK_API_URL, json=data, headers=headers)
-        response.raise_for_status()  # Raises an error for bad responses (4xx, 5xx)
+        response.raise_for_status()
 
         result = response.json()
 
@@ -70,18 +79,8 @@ def query_deepseek(prompt):
             content = result["choices"][0]["message"]["content"]
             print(f"DeepSeek raw response content: {content[:200]}...")
 
-            # Try to format the response as JSON if it's not already
-            if not (content.strip().startswith("{") and content.strip().endswith("}")):
-                try:
-                    # If it's plain text, wrap it in our expected JSON format
-                    return json.dumps({"answer": content})
-                except Exception as e:
-                    logging.error(f"Error formatting response: {e}")
-                    return json.dumps(
-                        {"answer": content}
-                    )  # Return anyway, don't silently fail
-
-            return content
+            # Wrap response into JSON format expected by the app
+            return json.dumps({"answer": content})
         else:
             logging.error(
                 "DeepSeek API returned an empty or invalid response structure."
@@ -205,32 +204,95 @@ def answer_hr_question(question):
     # Retrieve relevant content from HR documents
     relevant_text = retrieve_relevant_text(question)
 
-    prompt = f"""
-    You are an AI assistant. Answer the following question using only the information provided below.
+    # DEBUG: Check what's being retrieved
+    print(f"Retrieved text length: {len(relevant_text) if relevant_text else 0}")
+    print(
+        f"Retrieved text preview: {relevant_text[:200] if relevant_text else 'EMPTY'}"
+    )
 
-    Question: {question}
+    # Handle case where no documents are available
+    if not relevant_text or relevant_text.strip() in ["", "N/A", "N/A N/A"]:
+        # Check if it's a greeting or casual conversation
+        greetings = [
+            "hello",
+            "hi",
+            "hey",
+            "good morning",
+            "good afternoon",
+            "good evening",
+        ]
+        gratitude = ["thank", "thanks", "appreciate"]
 
-    Relevant Documents:
-    {relevant_text}
+        question_lower = question.lower().strip()
 
-    If the question cannot be answered with the available information, do not try to guess or make something up. 
-    Instead, politely explain that the answer is not available, without mentioning 'documents' or 'sources'. 
-    Say that you can only help with the topics covered in the available information, then list those topics. 
-    Finally, invite the user to clarify their question or ask about one of those areas.
+        if any(greeting in question_lower for greeting in greetings):
+            return json.dumps(
+                {
+                    "answer": "Hello! I'm here to help you with HR-related questions. However, it seems no HR documents have been uploaded yet. Please contact your administrator to upload the necessary documents."
+                }
+            )
 
-    Additionally, if the question is a greeting, polite message, or general chat (e.g., "hello", "thank you", "how are you?", "good morning"):
-    - Respond appropriately in a friendly, professional manner.
-    - If the message is just a greeting, keep it short and engaging (e.g., "Hello! How can I assist you today?").
-    - If the message expresses gratitude (e.g., "thank you"), acknowledge it in a warm way (e.g., "You're very welcome! Let me know if you need anything else.").
-    - Keep responses polite and slightly humorous when appropriate, but always professional.
+        if any(thank in question_lower for thank in gratitude):
+            return json.dumps(
+                {
+                    "answer": "You're welcome! If you have any other questions, feel free to ask."
+                }
+            )
 
-    Provide a structured response in exactly this JSON format:
-    {{
-      "answer": "<your detailed answer here>"
-    }}
-    """
+        # No documents available for actual questions
+        return json.dumps(
+            {
+                "answer": "I apologize, but I don't have access to any HR documents at the moment. Please contact your administrator to upload the necessary HR policies and information."
+            }
+        )
 
-    return query_deepseek(prompt)
+    # Documents are available - proceed with normal flow
+    prompt = f"""You are a helpful HR assistant. Answer the question using ONLY the information provided below.
+
+Question: {question}
+
+Available Information:
+{relevant_text}
+
+Instructions:
+1. If the question is a greeting (hello, hi, good morning):
+   - Respond warmly and professionally
+   - Invite them to ask HR-related questions
+   
+2. If the question expresses gratitude (thank you, thanks):
+   - Acknowledge warmly
+   - Offer further assistance
+   
+3. If the question can be answered with the available information:
+   - Provide a clear, detailed answer
+   - Use only facts from the provided information
+   - Be professional but friendly
+   
+4. If the question CANNOT be answered with the available information:
+   - Politely explain that the specific information isn't available
+   - Do NOT mention "documents" or "sources"
+   - List the general topics you CAN help with based on the available information
+   - Invite them to rephrase or ask about those topics
+
+CRITICAL: Respond ONLY with valid JSON in this exact format:
+{{
+  "answer": "your response here"
+}}
+
+Do NOT include any text before or after the JSON. Do NOT include labels like "Classification:" or "Response:".
+"""
+
+    response = query_deepseek(prompt)
+
+    # Additional validation
+    if not response or response.strip() == "":
+        return json.dumps(
+            {
+                "answer": "I apologize, but I encountered an error processing your question. Please try again."
+            }
+        )
+
+    return response
 
 
 def screen_resumes(job_description, resumes):
